@@ -4,6 +4,7 @@ interface HaywardInfo {
     poolID: string;
     heaterID: string;
     lightID: string;
+    virtualHeaterID: string;
 }
 interface HaywardParameter {
     name: string;
@@ -16,9 +17,13 @@ export declare class HaywardAPI {
     getTelemetry(): Promise<{
         currentTemperature: number;
         targetTemperature: number;
-    }>;
+        currentHeatingCoolingState: number;
+        targetHeatingCoolingState: number;
+    } | undefined>;
     setShow(showID: number): Promise<void>;
     setLightsOn(isOn: boolean): Promise<void>;
+    setHeaterOn(isOn: boolean): Promise<void>;
+    setEquipmentOn(equipmentID: string, isOn: boolean): Promise<void>;
     setHeaterTemperature(temperature: number): Promise<void>;
     callHaywardAPI(methodName: string, parameters: HaywardParameter[]): Promise<import("axios").AxiosResponse<any, any>>;
 }

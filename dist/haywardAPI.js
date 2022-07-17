@@ -7,22 +7,32 @@ exports.HaywardAPI = void 0;
 const axios_1 = __importDefault(require("axios"));
 const helpers_1 = require("./helpers");
 const xml_js_1 = __importDefault(require("xml-js"));
+const platform_1 = require("./platform");
 class HaywardAPI {
     constructor(haywardInfo) {
         this.haywardInfo = haywardInfo;
     }
     async getTelemetry() {
-        const rawResponse = await this.callHaywardAPI("GetTelemetryData", []);
-        const xml = rawResponse.data;
-        const telemetry = xml_js_1.default.xml2js(xml);
-        const mainElements = telemetry.elements.find((e) => e.name === "STATUS").elements;
-        const bodyOfWater = mainElements.find((e) => e.name === "BodyOfWater");
-        const currentTemperatureFahrenheit = bodyOfWater.attributes["waterTemp"];
-        const currentTemperature = (0, helpers_1.fahrenheitToCelcius)(currentTemperatureFahrenheit);
-        const virtualHeater = mainElements.find((e) => e.name === "VirtualHeater");
-        const targetTemperatureFahrenheit = virtualHeater.attributes["Current-Set-Point"];
-        const targetTemperature = (0, helpers_1.fahrenheitToCelcius)(targetTemperatureFahrenheit);
-        return { currentTemperature, targetTemperature };
+        try {
+            const rawResponse = await this.callHaywardAPI("GetTelemetryData", []);
+            const xml = rawResponse.data;
+            const telemetry = xml_js_1.default.xml2js(xml);
+            const mainElements = telemetry.elements.find((e) => e.name === "STATUS").elements;
+            const bodyOfWater = mainElements.find((e) => e.name === "BodyOfWater");
+            const currentTemperatureFahrenheit = bodyOfWater.attributes["waterTemp"];
+            const currentTemperature = (0, helpers_1.fahrenheitToCelcius)(currentTemperatureFahrenheit);
+            const virtualHeater = mainElements.find((e) => e.name === "VirtualHeater");
+            const targetTemperatureFahrenheit = virtualHeater.attributes["Current-Set-Point"];
+            const targetTemperature = (0, helpers_1.fahrenheitToCelcius)(targetTemperatureFahrenheit);
+            const heater = mainElements.find((e) => e.name === "Heater");
+            // dumb i just wanna use the HEAT and OFF characteristics
+            const currentHeatingCoolingState = heater.attributes["enable"] === "yes" ? 1 : 0;
+            const targetHeatingCoolingState = virtualHeater.attributes["enable"] === "yes" ? 1 : 0;
+            return { currentTemperature, targetTemperature, currentHeatingCoolingState, targetHeatingCoolingState };
+        }
+        catch (error) {
+            platform_1.platform.log.error(error);
+        }
     }
     // lighting
     async setShow(showID) {
@@ -33,9 +43,19 @@ class HaywardAPI {
         ].concat(extraTimerParameters));
     }
     async setLightsOn(isOn) {
+        this.setEquipmentOn(this.haywardInfo.lightID, isOn);
+    }
+    async setHeaterOn(isOn) {
+        await this.callHaywardAPI("SetHeaterEnable", [
+            param("PoolID", "int", this.haywardInfo.poolID),
+            param("HeaterID", "int", this.haywardInfo.virtualHeaterID),
+            param("Enabled", "bool", isOn ? "True" : "False"),
+        ].concat(extraTimerParameters));
+    }
+    async setEquipmentOn(equipmentID, isOn) {
         await this.callHaywardAPI("SetUIEquipmentCmd", [
             param("PoolID", "int", this.haywardInfo.poolID),
-            param("EquipmentID", "int", this.haywardInfo.lightID),
+            param("EquipmentID", "int", equipmentID),
             param("IsOn", "int", isOn ? "100" : "0"),
         ].concat(extraTimerParameters));
     }

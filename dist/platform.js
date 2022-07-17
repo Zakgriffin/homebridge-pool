@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PoolPlatform = exports.haywardAPI = void 0;
+exports.PoolPlatform = exports.platform = exports.haywardAPI = void 0;
 const settings_1 = require("./settings");
 const poolLightingAccessory_1 = require("./poolLightingAccessory");
 const poolHeaterAccessory_1 = require("./poolHeaterAccessory");
@@ -13,6 +13,7 @@ class PoolPlatform {
         this.Service = this.api.hap.Service;
         this.Characteristic = this.api.hap.Characteristic;
         this.accessories = [];
+        exports.platform = this;
         this.log.debug("Finished initializing platform:", this.config.name);
         this.api.on("didFinishLaunching", () => {
             log.debug("Executed didFinishLaunching callback");
@@ -24,7 +25,7 @@ class PoolPlatform {
         this.accessories.push(accessory);
     }
     discoverDevices() {
-        const { token, siteID, poolID, heaterID, lightID } = this.config;
+        const { token, siteID, poolID, heaterID, lightID, virtualHeaterID } = this.config;
         if (token == undefined)
             return this.log.error("No hayward token provided!");
         if (siteID == undefined)
@@ -35,7 +36,9 @@ class PoolPlatform {
             return this.log.error("No heaterID provided!");
         if (lightID == undefined)
             return this.log.error("No lightID provided!");
-        exports.haywardAPI = new haywardAPI_1.HaywardAPI({ token, siteID, poolID, heaterID, lightID });
+        if (virtualHeaterID == undefined)
+            return this.log.error("No virtualHeaterID provided!");
+        exports.haywardAPI = new haywardAPI_1.HaywardAPI({ token, siteID, poolID, heaterID, lightID, virtualHeaterID });
         this.startAccessory("Pool Lighting", poolLightingAccessory_1.beginPoolLightingAccessory);
         this.startAccessory("Pool Heater", poolHeaterAccessory_1.beginPoolHeaterAccessory);
     }

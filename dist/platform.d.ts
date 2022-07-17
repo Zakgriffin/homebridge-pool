@@ -1,6 +1,7 @@
 import { API, DynamicPlatformPlugin, Logger, PlatformAccessory, PlatformConfig, Service, Characteristic } from "homebridge";
 import { HaywardAPI } from "./haywardAPI";
 export declare let haywardAPI: HaywardAPI;
+export declare let platform: PoolPlatform;
 export declare class PoolPlatform implements DynamicPlatformPlugin {
     readonly log: Logger;
     readonly config: PlatformConfig;

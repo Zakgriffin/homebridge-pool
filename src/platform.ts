@@ -14,6 +14,7 @@ import { beginPoolHeaterAccessory } from "./poolHeaterAccessory";
 import { HaywardAPI } from "./haywardAPI";
 
 export let haywardAPI: HaywardAPI;
+export let platform: PoolPlatform;
 
 export class PoolPlatform implements DynamicPlatformPlugin {
   public readonly Service: typeof Service = this.api.hap.Service;
@@ -22,6 +23,8 @@ export class PoolPlatform implements DynamicPlatformPlugin {
   public readonly accessories: PlatformAccessory[] = [];
 
   constructor(public readonly log: Logger, public readonly config: PlatformConfig, public readonly api: API) {
+    platform = this;
+
     this.log.debug("Finished initializing platform:", this.config.name);
 
     this.api.on("didFinishLaunching", () => {
@@ -36,15 +39,16 @@ export class PoolPlatform implements DynamicPlatformPlugin {
   }
 
   discoverDevices() {
-    const { token, siteID, poolID, heaterID, lightID } = this.config;
+    const { token, siteID, poolID, heaterID, lightID, virtualHeaterID } = this.config;
 
     if (token == undefined) return this.log.error("No hayward token provided!");
     if (siteID == undefined) return this.log.error("No siteID provided!");
     if (poolID == undefined) return this.log.error("No poolID provided!");
     if (heaterID == undefined) return this.log.error("No heaterID provided!");
     if (lightID == undefined) return this.log.error("No lightID provided!");
+    if (virtualHeaterID == undefined) return this.log.error("No virtualHeaterID provided!");
 
-    haywardAPI = new HaywardAPI({ token, siteID, poolID, heaterID, lightID });
+    haywardAPI = new HaywardAPI({ token, siteID, poolID, heaterID, lightID, virtualHeaterID });
 
     this.startAccessory("Pool Lighting", beginPoolLightingAccessory);
     this.startAccessory("Pool Heater", beginPoolHeaterAccessory);
@@ -66,8 +70,3 @@ export class PoolPlatform implements DynamicPlatformPlugin {
     }
   }
 }
-
-// TODO:
-// slow to respond
-// error handling for network stuffs
-// HeatingCoolingState updating
