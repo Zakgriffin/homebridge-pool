@@ -1,3 +1,5 @@
+import { Subject, throttle } from "rxjs";
+
 export interface ColorRGB {
   red: number; // 0-255
   green: number; // 0-255
@@ -69,4 +71,20 @@ export function fahrenheitToCelcius(celcius: number) {
 
 export function celciusToFahrenheit(celcius: number) {
   return celcius * (9 / 5) + 32;
+}
+
+export function makeRateLimitedSetter<I, O>(asyncSetter: (input: I) => Promise<O>, onSuccess: (input: I) => void) {
+  const observable = new Subject<I>();
+  const observableDone = new Subject<void>();
+
+  observable.pipe(throttle(() => observableDone, { leading: true, trailing: true })).subscribe(async (input) => {
+    const success = await asyncSetter(input);
+    if (success !== undefined) onSuccess(input);
+
+    setTimeout(() => {
+      observableDone.next();
+    }, 3000);
+  });
+
+  return observable;
 }

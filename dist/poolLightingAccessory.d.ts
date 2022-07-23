@@ -1,4 +1,3 @@
 import { PlatformAccessory } from "homebridge";
-import { PoolPlatform } from "./platform";
-export declare function beginPoolLightingAccessory(platform: PoolPlatform, accessory: PlatformAccessory): void;
+export declare function beginPoolLightingAccessory(accessory: PlatformAccessory): void;
 //# sourceMappingURL=poolLightingAccessory.d.ts.map

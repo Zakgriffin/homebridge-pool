@@ -3,20 +3,33 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.beginPoolLightingAccessory = void 0;
 const platform_1 = require("./platform");
 const helpers_1 = require("./helpers");
-function beginPoolLightingAccessory(platform, accessory) {
+function beginPoolLightingAccessory(accessory) {
     var _a;
-    const Characteristic = platform.Characteristic;
+    const { haywardAPI, api } = platform_1.platform;
+    const { Characteristic, Service } = api.hap;
     let isLightOn = false;
     let lightColor = { red: 0, green: 0, blue: 0 };
     let selectedHue = undefined;
     let selectedSaturation = undefined;
-    const lightService = (_a = accessory.getService(platform.Service.Lightbulb)) !== null && _a !== void 0 ? _a : accessory.addService(platform.Service.Lightbulb);
+    const isLightOnObservable = (0, helpers_1.makeRateLimitedSetter)(haywardAPI.setLightsOn, (input) => {
+        isLightOn = input;
+        lightService.updateCharacteristic(Characteristic.On, isLightOn);
+    });
+    const showObservable = (0, helpers_1.makeRateLimitedSetter)(haywardAPI.setShow, (input) => {
+        const col = showColors.find((c) => c.id === input);
+        if (col === undefined)
+            return;
+        lightColor = col.color;
+        const { hue, saturation } = (0, helpers_1.rgbToHsb)(lightColor);
+        lightService.updateCharacteristic(Characteristic.Hue, hue);
+        lightService.updateCharacteristic(Characteristic.Saturation, saturation);
+    });
+    const lightService = (_a = accessory.getService(Service.Lightbulb)) !== null && _a !== void 0 ? _a : accessory.addService(Service.Lightbulb);
     lightService
         .getCharacteristic(Characteristic.On)
         .onGet(() => isLightOn)
         .onSet((i) => {
-        isLightOn = i;
-        platform_1.haywardAPI.setLightsOn(isLightOn);
+        isLightOnObservable.next(i);
     });
     lightService
         .getCharacteristic(Characteristic.Hue)
@@ -32,7 +45,7 @@ function beginPoolLightingAccessory(platform, accessory) {
         selectedSaturation = s;
         snapToNearestShow();
     });
-    async function snapToNearestShow() {
+    function snapToNearestShow() {
         if (selectedHue === undefined || selectedSaturation === undefined)
             return;
         const selectedColorHSB = {
@@ -40,6 +53,8 @@ function beginPoolLightingAccessory(platform, accessory) {
             saturation: selectedSaturation,
             brightness: 100,
         };
+        selectedHue = undefined;
+        selectedSaturation = undefined;
         let leastDif = Number.MAX_SAFE_INTEGER;
         let nearestShowColor = showColors[0];
         for (const showColor of showColors) {
@@ -49,13 +64,7 @@ function beginPoolLightingAccessory(platform, accessory) {
                 nearestShowColor = showColor;
             }
         }
-        lightColor = nearestShowColor.color;
-        const nearestShowColorHSB = (0, helpers_1.rgbToHsb)(nearestShowColor.color);
-        lightService.updateCharacteristic(platform.Characteristic.Hue, nearestShowColorHSB.hue);
-        lightService.updateCharacteristic(platform.Characteristic.Saturation, nearestShowColorHSB.saturation);
-        selectedHue = undefined;
-        selectedSaturation = undefined;
-        await platform_1.haywardAPI.setShow(nearestShowColor.id);
+        showObservable.next(nearestShowColor.id);
     }
     const showColors = [
         { id: 1, color: (0, helpers_1.rgb)(0, 0, 255) },
@@ -79,6 +88,11 @@ function beginPoolLightingAccessory(platform, accessory) {
         { id: 25, color: (0, helpers_1.rgb)(243, 240, 226) },
         { id: 26, color: (0, helpers_1.rgb)(252, 238, 79) }, // bright yellow
     ];
+    setInterval(() => {
+        if (selectedHue !== undefined || selectedSaturation !== undefined) {
+            platform_1.platform.log.error(`Color desync happened: hue: ${selectedHue}, saturation : ${selectedSaturation}`);
+        }
+    }, 1000);
 }
 exports.beginPoolLightingAccessory = beginPoolLightingAccessory;
 //# sourceMappingURL=poolLightingAccessory.js.map

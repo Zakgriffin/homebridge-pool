@@ -1,1 +1,1 @@
-{"version":3,"file":"poolLightingAccessory.d.ts","sourceRoot":"","sources":["../src/poolLightingAccessory.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,iBAAiB,EAAE,MAAM,YAAY,CAAC;AAE/C,OAAO,EAAE,YAAY,EAAc,MAAM,YAAY,CAAC;AAGtD,wBAAgB,0BAA0B,CAAC,QAAQ,EAAE,YAAY,EAAE,SAAS,EAAE,iBAAiB,QAuF9F"}
+{"version":3,"file":"poolLightingAccessory.d.ts","sourceRoot":"","sources":["../src/poolLightingAccessory.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,iBAAiB,EAAE,MAAM,YAAY,CAAC;AAK/C,wBAAgB,0BAA0B,CAAC,SAAS,EAAE,iBAAiB,QAuGtE"}

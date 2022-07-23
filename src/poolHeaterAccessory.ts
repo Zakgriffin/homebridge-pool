@@ -1,49 +1,58 @@
 import { PlatformAccessory } from "homebridge";
-import { PoolPlatform } from "./platform";
-import { fahrenheitToCelcius } from "./helpers";
-import { haywardAPI } from "./platform";
+import { fahrenheitToCelcius, makeRateLimitedSetter } from "./helpers";
+import { platform } from "./platform";
 
-export function beginPoolHeaterAccessory(platform: PoolPlatform, accessory: PlatformAccessory) {
-  const Characteristic = platform.Characteristic;
+export function beginPoolHeaterAccessory(accessory: PlatformAccessory) {
+  const { haywardAPI, api } = platform;
+  const { Characteristic, Service } = api.hap;
   const { OFF, HEAT } = Characteristic.CurrentHeatingCoolingState;
 
-  const heaterService =
-    accessory.getService(platform.Service.Thermostat) ?? accessory.addService(platform.Service.Thermostat);
+  const heaterService = accessory.getService(Service.Thermostat) ?? accessory.addService(Service.Thermostat);
 
   const heaterServiceHeatingCoolingState = { validValues: [OFF, HEAT] };
 
-  let currentHeatingCoolingState = OFF;
+  const MINIMUM_TARGET_TEMPERATURE = fahrenheitToCelcius(60);
+  const MAXIMUM_TARGET_TEMPERATURE = fahrenheitToCelcius(90);
+
+  let currentHeatingState = OFF;
+  let targetHeatingState = OFF;
+  let currentTemperature = MINIMUM_TARGET_TEMPERATURE;
+  let targetTemperature = MINIMUM_TARGET_TEMPERATURE;
+
+  const targetTemperatureObservable = makeRateLimitedSetter(haywardAPI.setTargetHeaterTemperature, (input) => {
+    targetTemperature = input;
+    heaterService.updateCharacteristic(Characteristic.TargetTemperature, targetTemperature);
+  });
+
+  const targetHeatingStateObservable = makeRateLimitedSetter(haywardAPI.setTargetHeatingState, (input) => {
+    targetHeatingState = input;
+    heaterService.updateCharacteristic(Characteristic.TargetHeatingCoolingState, targetHeatingState);
+  });
+
   heaterService
     .getCharacteristic(Characteristic.CurrentHeatingCoolingState)
     .setProps(heaterServiceHeatingCoolingState)
     .onGet(() => {
       updateFromTelemetry();
-      return currentHeatingCoolingState;
+      return currentHeatingState;
     });
 
-  let targetHeatingCoolingState = OFF;
   heaterService
     .getCharacteristic(Characteristic.TargetHeatingCoolingState)
     .setProps(heaterServiceHeatingCoolingState)
     .onGet(() => {
       updateFromTelemetry();
-      return targetHeatingCoolingState;
+      return targetHeatingState;
     })
     .onSet((s) => {
-      targetHeatingCoolingState = s as number;
-      haywardAPI.setHeaterOn(s == HEAT);
+      targetHeatingStateObservable.next(s as number);
     });
-
-  const MINIMUM_TARGET_TEMPERATURE = fahrenheitToCelcius(60);
-  const MAXIMUM_TARGET_TEMPERATURE = fahrenheitToCelcius(90);
-  let currentTemperature = MINIMUM_TARGET_TEMPERATURE;
 
   heaterService.getCharacteristic(Characteristic.CurrentTemperature).onGet(() => {
     updateFromTelemetry();
     return currentTemperature;
   });
 
-  let targetTemperature = MINIMUM_TARGET_TEMPERATURE;
   heaterService
     .getCharacteristic(Characteristic.TargetTemperature)
     .setProps({
@@ -55,22 +64,22 @@ export function beginPoolHeaterAccessory(platform: PoolPlatform, accessory: Plat
       return targetTemperature;
     })
     .onSet((t) => {
-      targetTemperature = t as number;
-      haywardAPI.setHeaterTemperature(t as number);
+      targetTemperatureObservable.next(t as number);
     });
 
   async function updateFromTelemetry() {
     const telemetry = await haywardAPI.getTelemetry();
     if (telemetry === undefined) return;
+    ({ currentTemperature, targetTemperature, currentHeatingState, targetHeatingState } = telemetry);
 
-    ({ currentTemperature, targetTemperature, currentHeatingCoolingState, targetHeatingCoolingState } = telemetry);
+    heaterService.updateCharacteristic(Characteristic.CurrentTemperature, currentTemperature);
+    heaterService.updateCharacteristic(Characteristic.CurrentHeatingCoolingState, currentHeatingState);
+    heaterService.updateCharacteristic(Characteristic.TargetTemperature, targetTemperature);
+    heaterService.updateCharacteristic(Characteristic.TargetHeatingCoolingState, targetHeatingState);
 
-    heaterService.updateCharacteristic(platform.Characteristic.CurrentTemperature, currentTemperature);
-    heaterService.updateCharacteristic(platform.Characteristic.TargetTemperature, targetTemperature);
-    heaterService.updateCharacteristic(platform.Characteristic.CurrentHeaterCoolerState, currentHeatingCoolingState);
-    heaterService.updateCharacteristic(platform.Characteristic.TargetHeaterCoolerState, targetHeatingCoolingState);
+    setTimeout(updateFromTelemetry, UPDATE_FROM_HAYWARD_INTERVAL);
   }
 
   const UPDATE_FROM_HAYWARD_INTERVAL = 2 * 60 * 1000; // 2 minutes
-  setInterval(updateFromTelemetry, UPDATE_FROM_HAYWARD_INTERVAL);
+  updateFromTelemetry();
 }

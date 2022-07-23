@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.celciusToFahrenheit = exports.fahrenheitToCelcius = exports.hsbDistance = exports.rgbDistance = exports.rgbToHsb = exports.hsbToRgb = exports.rgb = void 0;
+exports.makeRateLimitedSetter = exports.celciusToFahrenheit = exports.fahrenheitToCelcius = exports.hsbDistance = exports.rgbDistance = exports.rgbToHsb = exports.hsbToRgb = exports.rgb = void 0;
+const rxjs_1 = require("rxjs");
 function rgb(red, green, blue) {
     return { red, green, blue };
 }
@@ -55,4 +56,18 @@ function celciusToFahrenheit(celcius) {
     return celcius * (9 / 5) + 32;
 }
 exports.celciusToFahrenheit = celciusToFahrenheit;
+function makeRateLimitedSetter(asyncSetter, onSuccess) {
+    const observable = new rxjs_1.Subject();
+    const observableDone = new rxjs_1.Subject();
+    observable.pipe((0, rxjs_1.throttle)(() => observableDone, { leading: true, trailing: true })).subscribe(async (input) => {
+        const success = await asyncSetter(input);
+        if (success !== undefined)
+            onSuccess(input);
+        setTimeout(() => {
+            observableDone.next();
+        }, 3000);
+    });
+    return observable;
+}
+exports.makeRateLimitedSetter = makeRateLimitedSetter;
 //# sourceMappingURL=helpers.js.map
