@@ -73,7 +73,11 @@ export function celciusToFahrenheit(celcius: number) {
   return celcius * (9 / 5) + 32;
 }
 
-export function makeRateLimitedSetter<I, O>(asyncSetter: (input: I) => Promise<O>, onSuccess: (input: I) => void) {
+export function makeRateLimitedSetter<I, O>(
+  extra_delay: number,
+  asyncSetter: (input: I) => Promise<O>,
+  onSuccess: (input: I) => void
+) {
   const observable = new Subject<I>();
   const observableDone = new Subject<void>();
 
@@ -83,7 +87,7 @@ export function makeRateLimitedSetter<I, O>(asyncSetter: (input: I) => Promise<O
 
     setTimeout(() => {
       observableDone.next();
-    }, 3000);
+    }, extra_delay);
   });
 
   return observable;

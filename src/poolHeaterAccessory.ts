@@ -19,12 +19,12 @@ export function beginPoolHeaterAccessory(accessory: PlatformAccessory) {
   let currentTemperature = MINIMUM_TARGET_TEMPERATURE;
   let targetTemperature = MINIMUM_TARGET_TEMPERATURE;
 
-  const targetTemperatureObservable = makeRateLimitedSetter(haywardAPI.setTargetHeaterTemperature, (input) => {
+  const targetTemperatureObservable = makeRateLimitedSetter(0, haywardAPI.setTargetHeaterTemperature, (input) => {
     targetTemperature = input;
     heaterService.updateCharacteristic(Characteristic.TargetTemperature, targetTemperature);
   });
 
-  const targetHeatingStateObservable = makeRateLimitedSetter(haywardAPI.setTargetHeatingState, (input) => {
+  const targetHeatingStateObservable = makeRateLimitedSetter(0, haywardAPI.setTargetHeatingState, (input) => {
     targetHeatingState = input;
     heaterService.updateCharacteristic(Characteristic.TargetHeatingCoolingState, targetHeatingState);
   });

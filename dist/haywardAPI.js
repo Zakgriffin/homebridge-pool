@@ -31,6 +31,39 @@ const MINIMUM_TIME_BETWEEN_API_CALLS = 100;
 class HaywardAPI {
     constructor(haywardInfo) {
         this.haywardInfo = haywardInfo;
+        this.getTelemetry = async () => {
+            const timeNow = new Date().getTime();
+            if (this.recentTelemetry !== undefined &&
+                this.recentTelemetry.timeReceived > timeNow + MINIMUM_TIME_BETWEEN_API_CALLS) {
+                return this.recentTelemetry.telemetry;
+            }
+            try {
+                const rawResponse = await this.callHaywardAPI("GetTelemetryData", []);
+                if (rawResponse === undefined)
+                    return;
+                const xml = rawResponse.data;
+                const telemetry = xml_js_1.default.xml2js(xml);
+                const mainElements = telemetry.elements.find((e) => e.name === "STATUS").elements;
+                const bodyOfWater = mainElements.find((e) => e.name === "BodyOfWater");
+                const currentTemperatureFahrenheit = bodyOfWater.attributes["waterTemp"];
+                const currentTemperature = (0, helpers_1.fahrenheitToCelcius)(currentTemperatureFahrenheit);
+                const virtualHeater = mainElements.find((e) => e.name === "VirtualHeater");
+                const targetTemperatureFahrenheit = virtualHeater.attributes["Current-Set-Point"];
+                const targetTemperature = (0, helpers_1.fahrenheitToCelcius)(targetTemperatureFahrenheit);
+                const heater = mainElements.find((e) => e.name === "Heater");
+                const { HEAT, OFF } = platform_1.platform.api.hap.Characteristic.TargetHeatingCoolingState;
+                const currentHeatingState = heater.attributes["enable"] === "yes" ? HEAT : OFF;
+                const targetHeatingState = virtualHeater.attributes["enable"] === "yes" ? HEAT : OFF;
+                return { currentTemperature, targetTemperature, currentHeatingState, targetHeatingState };
+            }
+            catch (error) {
+                if (error instanceof TypeError) {
+                    platform_1.platform.log.error("Type error in getTelemetry, API may have changed?");
+                    return;
+                }
+                platform_1.platform.log.error("Unhandled error from axios during getTelemetry");
+            }
+        };
         // lighting
         this.setShow = async (showID) => {
             return await this.callHaywardAPI("SetStandAloneLightShow", [
@@ -40,106 +73,64 @@ class HaywardAPI {
                 ...extraTimerParameters,
             ]);
         };
-    }
-    async getTelemetry() {
-        const timeNow = new Date().getTime();
-        if (this.recentTelemetry !== undefined &&
-            this.recentTelemetry.timeReceived > timeNow + MINIMUM_TIME_BETWEEN_API_CALLS) {
-            return this.recentTelemetry.telemetry;
-        }
-        try {
-            const rawResponse = await this.callHaywardAPI("GetTelemetryData", []);
-            if (rawResponse === undefined) {
-                return;
-            }
-            const xml = rawResponse.data;
-            const telemetry = xml_js_1.default.xml2js(xml);
-            const mainElements = telemetry.elements.find((e) => e.name === "STATUS").elements;
-            const bodyOfWater = mainElements.find((e) => e.name === "BodyOfWater");
-            const currentTemperatureFahrenheit = bodyOfWater.attributes["waterTemp"];
-            const currentTemperature = (0, helpers_1.fahrenheitToCelcius)(currentTemperatureFahrenheit);
-            const virtualHeater = mainElements.find((e) => e.name === "VirtualHeater");
-            const targetTemperatureFahrenheit = virtualHeater.attributes["Current-Set-Point"];
-            const targetTemperature = (0, helpers_1.fahrenheitToCelcius)(targetTemperatureFahrenheit);
-            const heater = mainElements.find((e) => e.name === "Heater");
-            const { HEAT, OFF } = platform_1.platform.api.hap.Characteristic.TargetHeatingCoolingState;
-            const currentHeatingState = heater.attributes["enable"] === "yes" ? HEAT : OFF;
-            const targetHeatingState = virtualHeater.attributes["enable"] === "yes" ? HEAT : OFF;
-            return { currentTemperature, targetTemperature, currentHeatingState, targetHeatingState };
-        }
-        catch (error) {
-            platform_1.platform.log.error(error);
-        }
-    }
-    async setLightsOn(isOn) {
-        this.setEquipmentOn(this.haywardInfo.lightID, isOn);
-    }
-    async setTargetHeatingState(heatingState) {
-        const { HEAT } = platform_1.platform.api.hap.Characteristic.TargetHeatingCoolingState;
-        return await this.callHaywardAPI("SetHeaterEnable", [
-            param("PoolID", "int", this.haywardInfo.poolID),
-            param("HeaterID", "int", this.haywardInfo.virtualHeaterID),
-            param("Enabled", "bool", heatingState === HEAT ? "True" : "False"),
-            ...extraTimerParameters,
-        ]);
-    }
-    async setEquipmentOn(equipmentID, isOn) {
-        await this.callHaywardAPI("SetUIEquipmentCmd", [
-            param("PoolID", "int", this.haywardInfo.poolID),
-            param("EquipmentID", "int", equipmentID),
-            param("IsOn", "int", isOn ? "100" : "0"),
-            ...extraTimerParameters,
-        ]);
-    }
-    // heater
-    async setTargetHeaterTemperature(targetHeaterTemperature) {
-        const targetHeaterTemperatureFahrenheit = Math.round((0, helpers_1.celciusToFahrenheit)(targetHeaterTemperature));
-        return await this.callHaywardAPI("SetUIHeaterCmd", [
-            param("PoolID", "int", this.haywardInfo.poolID),
-            param("HeaterID", "int", this.haywardInfo.heaterID),
-            param("Temp", "int", targetHeaterTemperatureFahrenheit.toString()),
-        ]);
-    }
-    async a(x, value) {
-        x.pendingValue = value;
-        if (x.isSending)
-            return;
-        x.isSending = true;
-        const success = await x.setViaAPI(value);
-        if (success) {
-            x.characteristic.update(value);
-            x.value = value;
-        }
-        x.isSending = false;
-    }
-    async callHaywardAPI(methodName, parameters) {
-        const { token, siteID } = this.haywardInfo;
-        const fullParameters = [param("MspSystemID", "int", siteID), param("Version", "string", "0"), ...parameters];
-        try {
-            const response = await axios_1.default.post("https://www.haywardomnilogic.com/HAAPI/HomeAutomation/API.ashx", `<Request>
+        this.setLightsOn = async (isOn) => {
+            return this.setEquipmentOn(this.haywardInfo.lightID, isOn);
+        };
+        this.setTargetHeatingState = async (heatingState) => {
+            const { HEAT } = platform_1.platform.api.hap.Characteristic.TargetHeatingCoolingState;
+            return await this.callHaywardAPI("SetHeaterEnable", [
+                param("PoolID", "int", this.haywardInfo.poolID),
+                param("HeaterID", "int", this.haywardInfo.virtualHeaterID),
+                param("Enabled", "bool", heatingState === HEAT ? "True" : "False"),
+                ...extraTimerParameters,
+            ]);
+        };
+        this.setEquipmentOn = async (equipmentID, isOn) => {
+            return await this.callHaywardAPI("SetUIEquipmentCmd", [
+                param("PoolID", "int", this.haywardInfo.poolID),
+                param("EquipmentID", "int", equipmentID),
+                param("IsOn", "int", isOn ? "100" : "0"),
+                ...extraTimerParameters,
+            ]);
+        };
+        // heater
+        this.setTargetHeaterTemperature = async (targetHeaterTemperature) => {
+            const targetHeaterTemperatureFahrenheit = Math.round((0, helpers_1.celciusToFahrenheit)(targetHeaterTemperature));
+            return await this.callHaywardAPI("SetUIHeaterCmd", [
+                param("PoolID", "int", this.haywardInfo.poolID),
+                param("HeaterID", "int", this.haywardInfo.heaterID),
+                param("Temp", "int", targetHeaterTemperatureFahrenheit.toString()),
+            ]);
+        };
+        this.callHaywardAPI = async (methodName, parameters) => {
+            const { token, siteID } = this.haywardInfo;
+            const fullParameters = [param("MspSystemID", "int", siteID), param("Version", "string", "0"), ...parameters];
+            try {
+                const response = await axios_1.default.post("https://www.haywardomnilogic.com/HAAPI/HomeAutomation/API.ashx", `<Request>
           <Name>${methodName}</Name>
           <Parameters>
             ${fullParameters.map(parameterToString).join()}
           </Parameters>
         </Request>`, {
-                headers: {
-                    "content-type": "text/xml",
-                    "cache-control": "no-cache",
-                    SiteID: siteID,
-                    Token: token,
-                },
-            });
-            // if (response.succeeded) {
-            return response;
-            // }
-        }
-        catch (error) {
-            if (error instanceof axios_1.AxiosError && error.code === "ENOTFOUND") {
-                platform_1.platform.log.error("Hayward domain not found");
+                    headers: {
+                        "content-type": "text/xml",
+                        "cache-control": "no-cache",
+                        SiteID: siteID,
+                        Token: token,
+                    },
+                });
+                // if (response.succeeded) {
+                return response;
+                // }
             }
-            platform_1.platform.log.error("Unhandled error from axios");
-        }
-        return undefined;
+            catch (error) {
+                if (error instanceof axios_1.AxiosError && error.code === "ENOTFOUND") {
+                    platform_1.platform.log.error("Hayward domain not found");
+                }
+                platform_1.platform.log.error("Unhandled error from axios during callHaywardAPI");
+            }
+            return undefined;
+        };
     }
 }
 exports.HaywardAPI = HaywardAPI;

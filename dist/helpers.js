@@ -56,7 +56,7 @@ function celciusToFahrenheit(celcius) {
     return celcius * (9 / 5) + 32;
 }
 exports.celciusToFahrenheit = celciusToFahrenheit;
-function makeRateLimitedSetter(asyncSetter, onSuccess) {
+function makeRateLimitedSetter(extra_delay, asyncSetter, onSuccess) {
     const observable = new rxjs_1.Subject();
     const observableDone = new rxjs_1.Subject();
     observable.pipe((0, rxjs_1.throttle)(() => observableDone, { leading: true, trailing: true })).subscribe(async (input) => {
@@ -65,7 +65,7 @@ function makeRateLimitedSetter(asyncSetter, onSuccess) {
             onSuccess(input);
         setTimeout(() => {
             observableDone.next();
-        }, 3000);
+        }, extra_delay);
     });
     return observable;
 }

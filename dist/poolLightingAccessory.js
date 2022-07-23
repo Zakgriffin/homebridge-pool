@@ -11,11 +11,11 @@ function beginPoolLightingAccessory(accessory) {
     let lightColor = { red: 0, green: 0, blue: 0 };
     let selectedHue = undefined;
     let selectedSaturation = undefined;
-    const isLightOnObservable = (0, helpers_1.makeRateLimitedSetter)(haywardAPI.setLightsOn, (input) => {
+    const isLightOnObservable = (0, helpers_1.makeRateLimitedSetter)(3000, haywardAPI.setLightsOn, (input) => {
         isLightOn = input;
         lightService.updateCharacteristic(Characteristic.On, isLightOn);
     });
-    const showObservable = (0, helpers_1.makeRateLimitedSetter)(haywardAPI.setShow, (input) => {
+    const showObservable = (0, helpers_1.makeRateLimitedSetter)(3000, haywardAPI.setShow, (input) => {
         const col = showColors.find((c) => c.id === input);
         if (col === undefined)
             return;

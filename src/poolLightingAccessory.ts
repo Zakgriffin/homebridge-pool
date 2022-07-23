@@ -13,12 +13,12 @@ export function beginPoolLightingAccessory(accessory: PlatformAccessory) {
   let selectedHue: number | undefined = undefined;
   let selectedSaturation: number | undefined = undefined;
 
-  const isLightOnObservable = makeRateLimitedSetter(haywardAPI.setLightsOn, (input) => {
+  const isLightOnObservable = makeRateLimitedSetter(3000, haywardAPI.setLightsOn, (input) => {
     isLightOn = input;
     lightService.updateCharacteristic(Characteristic.On, isLightOn);
   });
 
-  const showObservable = makeRateLimitedSetter(haywardAPI.setShow, (input) => {
+  const showObservable = makeRateLimitedSetter(3000, haywardAPI.setShow, (input) => {
     const col = showColors.find((c) => c.id === input);
     if (col === undefined) return;
 

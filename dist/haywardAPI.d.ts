@@ -24,14 +24,13 @@ export declare class HaywardAPI {
         timeReceived: number;
     };
     constructor(haywardInfo: HaywardInfo);
-    getTelemetry(): Promise<Telemetry | undefined>;
+    getTelemetry: () => Promise<Telemetry | undefined>;
     setShow: (showID: number) => Promise<import("axios").AxiosResponse<any, any> | undefined>;
-    setLightsOn(isOn: boolean): Promise<void>;
-    setTargetHeatingState(heatingState: number): Promise<import("axios").AxiosResponse<any, any> | undefined>;
-    setEquipmentOn(equipmentID: string, isOn: boolean): Promise<void>;
-    setTargetHeaterTemperature(targetHeaterTemperature: number): Promise<import("axios").AxiosResponse<any, any> | undefined>;
-    a(x: any, value: any): Promise<void>;
-    callHaywardAPI(methodName: string, parameters: HaywardParameter[]): Promise<import("axios").AxiosResponse<any, any> | undefined>;
+    setLightsOn: (isOn: boolean) => Promise<import("axios").AxiosResponse<any, any> | undefined>;
+    setTargetHeatingState: (heatingState: number) => Promise<import("axios").AxiosResponse<any, any> | undefined>;
+    setEquipmentOn: (equipmentID: string, isOn: boolean) => Promise<import("axios").AxiosResponse<any, any> | undefined>;
+    setTargetHeaterTemperature: (targetHeaterTemperature: number) => Promise<import("axios").AxiosResponse<any, any> | undefined>;
+    callHaywardAPI: (methodName: string, parameters: HaywardParameter[]) => Promise<import("axios").AxiosResponse<any, any> | undefined>;
 }
 export {};
 //# sourceMappingURL=haywardAPI.d.ts.map
