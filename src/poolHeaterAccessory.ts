@@ -9,10 +9,14 @@ export function beginPoolHeaterAccessory(accessory: PlatformAccessory) {
 
   const heaterService = accessory.getService(Service.Thermostat) ?? accessory.addService(Service.Thermostat);
 
-  const heaterServiceHeatingCoolingState = { validValues: [OFF, HEAT] };
-
   const MINIMUM_TARGET_TEMPERATURE = fahrenheitToCelcius(60);
   const MAXIMUM_TARGET_TEMPERATURE = fahrenheitToCelcius(90);
+
+  const heatingCoolingStateProps = { validValues: [OFF, HEAT] };
+  const temperatureProps = {
+    minValue: MINIMUM_TARGET_TEMPERATURE,
+    maxValue: MAXIMUM_TARGET_TEMPERATURE,
+  };
 
   let currentHeatingState = OFF;
   let targetHeatingState = OFF;
@@ -31,7 +35,7 @@ export function beginPoolHeaterAccessory(accessory: PlatformAccessory) {
 
   heaterService
     .getCharacteristic(Characteristic.CurrentHeatingCoolingState)
-    .setProps(heaterServiceHeatingCoolingState)
+    .setProps(heatingCoolingStateProps)
     .onGet(() => {
       updateFromTelemetry();
       return currentHeatingState;
@@ -39,7 +43,7 @@ export function beginPoolHeaterAccessory(accessory: PlatformAccessory) {
 
   heaterService
     .getCharacteristic(Characteristic.TargetHeatingCoolingState)
-    .setProps(heaterServiceHeatingCoolingState)
+    .setProps(heatingCoolingStateProps)
     .onGet(() => {
       updateFromTelemetry();
       return targetHeatingState;
@@ -48,17 +52,17 @@ export function beginPoolHeaterAccessory(accessory: PlatformAccessory) {
       targetHeatingStateObservable.next(s as number);
     });
 
-  heaterService.getCharacteristic(Characteristic.CurrentTemperature).onGet(() => {
-    updateFromTelemetry();
-    return currentTemperature;
-  });
+  heaterService
+    .getCharacteristic(Characteristic.CurrentTemperature)
+    .setProps(temperatureProps)
+    .onGet(() => {
+      updateFromTelemetry();
+      return currentTemperature;
+    });
 
   heaterService
     .getCharacteristic(Characteristic.TargetTemperature)
-    .setProps({
-      minValue: MINIMUM_TARGET_TEMPERATURE,
-      maxValue: MAXIMUM_TARGET_TEMPERATURE,
-    })
+    .setProps(temperatureProps)
     .onGet(() => {
       updateFromTelemetry();
       return targetTemperature;
