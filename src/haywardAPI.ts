@@ -72,8 +72,10 @@ export class HaywardAPI {
       if (error instanceof TypeError) {
         platform.log.error("Type error in getTelemetry, API may have changed?");
         return;
+      } else {
+        platform.log.error("Unhandled error from axios during getTelemetry");
       }
-      platform.log.error("Unhandled error from axios during getTelemetry");
+      platform.log.error(error as string);
     }
   };
 
@@ -156,6 +158,7 @@ export class HaywardAPI {
       }
 
       platform.log.error("Unhandled error from axios during callHaywardAPI");
+      platform.log.error(error as string);
     }
     return undefined;
   };

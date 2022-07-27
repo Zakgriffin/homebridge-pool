@@ -63,3 +63,5 @@ export class PoolPlatform implements DynamicPlatformPlugin {
 // graphical config
 // error handling: failed request, timeout
 // interval coincide with set issues
+
+// current temp above 90 warning
