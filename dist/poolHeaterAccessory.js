@@ -9,9 +9,13 @@ function beginPoolHeaterAccessory(accessory) {
     const { Characteristic, Service } = api.hap;
     const { OFF, HEAT } = Characteristic.CurrentHeatingCoolingState;
     const heaterService = (_a = accessory.getService(Service.Thermostat)) !== null && _a !== void 0 ? _a : accessory.addService(Service.Thermostat);
-    const heaterServiceHeatingCoolingState = { validValues: [OFF, HEAT] };
     const MINIMUM_TARGET_TEMPERATURE = (0, helpers_1.fahrenheitToCelcius)(60);
     const MAXIMUM_TARGET_TEMPERATURE = (0, helpers_1.fahrenheitToCelcius)(90);
+    const heatingCoolingStateProps = { validValues: [OFF, HEAT] };
+    const temperatureProps = {
+        minValue: MINIMUM_TARGET_TEMPERATURE,
+        maxValue: MAXIMUM_TARGET_TEMPERATURE,
+    };
     let currentHeatingState = OFF;
     let targetHeatingState = OFF;
     let currentTemperature = MINIMUM_TARGET_TEMPERATURE;
@@ -26,14 +30,14 @@ function beginPoolHeaterAccessory(accessory) {
     });
     heaterService
         .getCharacteristic(Characteristic.CurrentHeatingCoolingState)
-        .setProps(heaterServiceHeatingCoolingState)
+        .setProps(heatingCoolingStateProps)
         .onGet(() => {
         updateFromTelemetry();
         return currentHeatingState;
     });
     heaterService
         .getCharacteristic(Characteristic.TargetHeatingCoolingState)
-        .setProps(heaterServiceHeatingCoolingState)
+        .setProps(heatingCoolingStateProps)
         .onGet(() => {
         updateFromTelemetry();
         return targetHeatingState;
@@ -41,16 +45,16 @@ function beginPoolHeaterAccessory(accessory) {
         .onSet((s) => {
         targetHeatingStateObservable.next(s);
     });
-    heaterService.getCharacteristic(Characteristic.CurrentTemperature).onGet(() => {
+    heaterService
+        .getCharacteristic(Characteristic.CurrentTemperature)
+        .setProps(temperatureProps)
+        .onGet(() => {
         updateFromTelemetry();
         return currentTemperature;
     });
     heaterService
         .getCharacteristic(Characteristic.TargetTemperature)
-        .setProps({
-        minValue: MINIMUM_TARGET_TEMPERATURE,
-        maxValue: MAXIMUM_TARGET_TEMPERATURE,
-    })
+        .setProps(temperatureProps)
         .onGet(() => {
         updateFromTelemetry();
         return targetTemperature;

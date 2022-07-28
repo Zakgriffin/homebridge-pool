@@ -61,7 +61,10 @@ class HaywardAPI {
                     platform_1.platform.log.error("Type error in getTelemetry, API may have changed?");
                     return;
                 }
-                platform_1.platform.log.error("Unhandled error from axios during getTelemetry");
+                else {
+                    platform_1.platform.log.error("Unhandled error from axios during getTelemetry");
+                }
+                platform_1.platform.log.error(error);
             }
         };
         // lighting
@@ -128,6 +131,7 @@ class HaywardAPI {
                     platform_1.platform.log.error("Hayward domain not found");
                 }
                 platform_1.platform.log.error("Unhandled error from axios during callHaywardAPI");
+                platform_1.platform.log.error(error);
             }
             return undefined;
         };
